@@ -50,6 +50,9 @@ export const RATE_LIMITS = {
   SEARCH: { limit: 60, windowSeconds: 60 },
   REPORTS: { limit: 10, windowSeconds: 3600 },
   ADMIN: { limit: 120, windowSeconds: 60 },
+  PASSWORD_RESET: { limit: 5, windowSeconds: 3600 },
+  VERIFY_EMAIL: { limit: 5, windowSeconds: 3600 },
+  OAUTH: { limit: 30, windowSeconds: 900 },
 } as const;
 
 /** Anonymous paste-creation quota per IP per UTC day. */

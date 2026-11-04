@@ -13,6 +13,8 @@ import { resolveSession } from '../services/session.service.js';
  */
 export function authContext(): RequestHandler {
   return async (req, _res, next) => {
+    req.validated = {};
+
     let auth: AuthContext = ANONYMOUS;
 
     const sessionToken = getCookie(req.headers.cookie, SESSION_COOKIE);

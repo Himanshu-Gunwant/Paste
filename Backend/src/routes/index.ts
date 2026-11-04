@@ -1,12 +1,28 @@
 import { Router } from 'express';
+import { RATE_LIMITS } from '../config/constants.js';
+import { env } from '../config/env.js';
+import { authContext } from '../middleware/auth-context.js';
+import { originGuard } from '../middleware/origin-guard.js';
+import { rateLimit } from '../middleware/rate-limit.js';
+import { authRouter } from './auth.routes.js';
+import { userRouter } from './user.routes.js';
 
 /**
- * Versioned API surface. Routes are thin wiring only — controllers validate,
- * services decide (docs/ARCHITECTURE.md §14).
- *
- * Phase roadmap (docs/ARCHITECTURE.md §19):
- *   Phase 1: authRouter, usersRouter
- *   Phase 2: pastesRouter (+ reports skeleton in Phase 8)
- *   ...
+ * Versioned API surface (docs/ARCHITECTURE.md §7, §14). Cross-cutting order:
+ * global rate limit → CSRF origin guard → auth-context resolution → routers.
+ * Controllers validate, services decide.
  */
 export const apiRouter = Router();
+
+apiRouter.use(rateLimit({ bucket: 'global', ...RATE_LIMITS.GLOBAL_PER_IP }));
+
+const allowedOrigins = [env.APP_BASE_URL, ...(env.FRONTEND_ORIGIN ? [env.FRONTEND_ORIGIN] : [])];
+apiRouter.use(originGuard(allowedOrigins));
+
+apiRouter.use(authContext());
+
+apiRouter.use('/auth', authRouter);
+apiRouter.use('/users', userRouter);
+
+// Phase 2+: pastesRouter, revisionsRouter, collectionsRouter, bookmarksRouter,
+// searchRouter, apiKeysRouter, analyticsRouter, adminRouter, reportsRouter.

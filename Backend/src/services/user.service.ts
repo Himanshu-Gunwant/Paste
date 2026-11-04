@@ -26,6 +26,22 @@ export function toPublicProfile(user: User): PublicProfile {
   };
 }
 
+/** Self projection — includes email but never the password hash. */
+export function toCurrentUser(user: User) {
+  return {
+    id: user.id,
+    email: user.email,
+    username: user.username,
+    displayName: user.displayName,
+    bio: user.bio,
+    avatarUrl: user.avatarUrl,
+    websiteUrl: user.websiteUrl,
+    emailVerified: user.emailVerified,
+    role: user.role,
+    createdAt: user.createdAt,
+  };
+}
+
 export async function getMe(userId: string): Promise<User> {
   const user = await userRepository.findById(userId);
   if (!user || user.deletedAt || user.status !== 'ACTIVE') throw AppError.unauthorized();

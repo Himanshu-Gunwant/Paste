@@ -13,5 +13,7 @@ declare module 'express-serve-static-core' {
     id: string;
     /** Auth context resolved by middleware/auth-context.ts (never undefined). */
     auth: AuthContext;
+    /** Parsed request parts, populated by middleware/validate.ts. */
+    validated: { body?: unknown; query?: unknown; params?: unknown };
   }
 }
