@@ -4,6 +4,7 @@ import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
 import { closePrisma } from './lib/prisma.js';
 import { closeRedis } from './lib/redis.js';
+import { flushApiUsage } from './services/api-usage.service.js';
 
 /**
  * API process entrypoint (docs/ARCHITECTURE.md §17 — graceful shutdown).
@@ -19,6 +20,12 @@ const portOffset = process.env.NODE_APP_INSTANCE
   ? Number.parseInt(process.env.NODE_APP_INSTANCE, 10)
   : 0;
 const port = Number.isFinite(portOffset) ? env.PORT + portOffset : env.PORT;
+
+// Batched API-usage flush (docs/ARCHITECTURE.md §4 H) — every 5 s, unref'd.
+const usageFlushTimer = setInterval(() => {
+  void flushApiUsage();
+}, 5_000);
+usageFlushTimer.unref();
 
 const app = createApp();
 const server = app.listen(port, () => {
@@ -40,6 +47,8 @@ async function shutdown(signal: string): Promise<void> {
 
   try {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+    clearInterval(usageFlushTimer);
+    await flushApiUsage();
     await closeRedis();
     await closePrisma();
     clearTimeout(forceExitTimer);

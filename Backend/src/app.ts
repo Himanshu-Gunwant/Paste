@@ -5,6 +5,7 @@ import { env } from './config/env.js';
 import { REQUEST_BODY_LIMIT } from './config/constants.js';
 import { requestLogging } from './middleware/request-context.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
+import { mountOpenApi } from './plugins/openapi.js';
 import { healthRouter } from './routes/health.js';
 import { apiRouter } from './routes/index.js';
 
@@ -40,6 +41,9 @@ export function createApp(): express.Express {
 
   app.use(requestLogging());
   app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
+
+  // OpenAPI document + Swagger UI (public, docs/ARCHITECTURE.md §4 H).
+  mountOpenApi(app);
 
   // Unversioned operational endpoints (Nginx exposes /healthz and /readyz).
   app.use(healthRouter);

@@ -4,7 +4,10 @@ import { env } from '../config/env.js';
 import { authContext } from '../middleware/auth-context.js';
 import { originGuard } from '../middleware/origin-guard.js';
 import { rateLimit } from '../middleware/rate-limit.js';
+import { apiKeyQuota, apiUsageRecorder } from '../middleware/api-usage.js';
+import { idempotencyGuard } from '../middleware/idempotency.js';
 import { discoveryRouter } from './discovery.routes.js';
+import { apiKeysRouter } from './api-key.routes.js';
 import { authRouter } from './auth.routes.js';
 import { pastesRouter } from './paste.routes.js';
 import { userRouter } from './user.routes.js';
@@ -22,11 +25,15 @@ const allowedOrigins = [env.APP_BASE_URL, ...(env.FRONTEND_ORIGIN ? [env.FRONTEN
 apiRouter.use(originGuard(allowedOrigins));
 
 apiRouter.use(authContext());
+apiRouter.use(apiKeyQuota()); // API-key daily quotas (§4 H)
+apiRouter.use(apiUsageRecorder()); // buffered usage capture
+apiRouter.use(idempotencyGuard()); // paste-creation idempotency keys
 
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/users', userRouter);
 apiRouter.use(discoveryRouter); // GET /pastes, /search, /languages
 apiRouter.use('/pastes', pastesRouter);
+apiRouter.use('/api-keys', apiKeysRouter);
 
 // Phase 3+: revisionsRouter (under /pastes/:id/revisions), collectionsRouter,
 // bookmarksRouter, searchRouter, apiKeysRouter, analyticsRouter, adminRouter.

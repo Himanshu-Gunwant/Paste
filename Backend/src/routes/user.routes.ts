@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/require-auth.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
 import * as userController from '../controllers/user.controller.js';
+import * as apiKeyController from '../controllers/api-key.controller.js';
 import {
   deleteMeSchema,
   sessionIdParamsSchema,
@@ -20,6 +21,7 @@ export const userRouter = Router();
 userRouter.get('/me', requireAuth(), userController.getMe);
 userRouter.patch('/me', requireAuth(), validateBody(updateMeSchema), userController.updateMe);
 userRouter.delete('/me', requireAuth(), validateBody(deleteMeSchema), userController.deleteMe);
+userRouter.get('/me/api-usage', requireAuth(), apiKeyController.myUsage);
 userRouter.get('/me/sessions', requireAuth(), userController.listSessions);
 userRouter.delete('/me/sessions', requireAuth(), userController.revokeAllSessions);
 userRouter.delete('/me/sessions/:id', requireAuth(), validateParams(sessionIdParamsSchema), userController.revokeSession);
