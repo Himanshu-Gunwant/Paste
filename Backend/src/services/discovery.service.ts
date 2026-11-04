@@ -70,11 +70,7 @@ function authorFilter(username?: string) {
   return { author: { username, status: 'ACTIVE' as const, deletedAt: null } };
 }
 
-export async function listPublicPastes(options: ListOptions = {}): Promise<{
-  data: PasteSummary[];
-  cursor?: string;
-  hasMore: boolean;
-}> {
+export async function listPublicPastes(options: ListOptions = {}): Promise<{ data: PasteSummary[]; pagination: { cursor?: string; hasMore: boolean } }> {
   const limit = Math.min(Math.max(options.limit ?? PAGINATION.DEFAULT_LIMIT, 1), PAGINATION.MAX_LIMIT);
   const sort: FeedSort = options.sort ?? 'latest';
   const now = new Date();
@@ -105,14 +101,12 @@ export async function listPublicPastes(options: ListOptions = {}): Promise<{
       take: limit,
       include: { author: { select: { username: true } } },
     });
-    return {
-      data: rows.map(toSummary),
-      ...buildPage(rows, limit, (row) => ({
-        t: row.createdAt.toISOString(),
-        id: row.id,
-        v: row.viewCount!.toString(),
-      })),
-    };
+    const page = buildPage(rows, limit, (row) => ({
+      t: row.createdAt.toISOString(),
+      id: row.id,
+      v: row.viewCount!.toString(),
+    }));
+    return { data: rows.map(toSummary), pagination: page };
   }
 
   // latest — (created_at, id) keyset
@@ -130,10 +124,8 @@ export async function listPublicPastes(options: ListOptions = {}): Promise<{
     take: limit,
     include: { author: { select: { username: true } } },
   });
-  return {
-    data: rows.map(toSummary),
-    ...buildPage(rows, limit, (row) => ({ t: row.createdAt.toISOString(), id: row.id })),
-  };
+  const latestPage = buildPage(rows, limit, (row) => ({ t: row.createdAt.toISOString(), id: row.id }));
+  return { data: rows.map(toSummary), pagination: latestPage };
 }
 
 function buildPage(
@@ -174,17 +166,13 @@ export async function recomputeTrending(now: Date = new Date()): Promise<number>
   return rows.length;
 }
 
-async function listTrending(options: ListOptions): Promise<{
-  data: PasteSummary[];
-  cursor?: string;
-  hasMore: boolean;
-}> {
+async function listTrending(options: ListOptions): Promise<{ data: PasteSummary[]; pagination: { cursor?: string; hasMore: boolean } }> {
   const limit = Math.min(Math.max(options.limit ?? PAGINATION.DEFAULT_LIMIT, 1), PAGINATION.MAX_LIMIT);
   const offset = Number.parseInt(options.cursor ?? '0', 10) || 0;
   const redis = getRedis();
   const idsWithScores = await redis.zrevrange(REDIS_KEYS.trending(), offset, offset + limit - 1);
   const ids = idsWithScores.filter((value) => !value.includes('.')).slice(0, limit);
-  if (ids.length === 0) return { data: [], hasMore: false };
+  if (ids.length === 0) return { data: [], pagination: { hasMore: false } };
 
   const rows = await prisma.paste.findMany({
     where: { id: { in: ids }, ...publicLiveWhere(new Date()), ...authorFilter(options.username), ...(options.language ? { language: options.language } : {}) },
@@ -197,7 +185,10 @@ async function listTrending(options: ListOptions): Promise<{
     .map(toSummary);
 
   const hasMore = (await redis.zcard(REDIS_KEYS.trending())) > offset + ids.length;
-  return { data: ordered, ...(hasMore ? { cursor: String(offset + ids.length) } : {}), hasMore };
+  return {
+    data: ordered,
+    pagination: { ...(hasMore ? { cursor: String(offset + ids.length) } : {}), hasMore },
+  };
 }
 
 export interface SearchOptions extends ListOptions {
@@ -206,11 +197,7 @@ export interface SearchOptions extends ListOptions {
 
 /** FTS over title+description via the generated tsvector — raw SQL (Prisma
  *  cannot express tsvector matching); fully parameterized. */
-export async function searchPublicPastes(options: SearchOptions): Promise<{
-  data: PasteSummary[];
-  cursor?: string;
-  hasMore: boolean;
-}> {
+export async function searchPublicPastes(options: SearchOptions): Promise<{ data: PasteSummary[]; pagination: { cursor?: string; hasMore: boolean } }> {
   const limit = Math.min(Math.max(options.limit ?? PAGINATION.DEFAULT_LIMIT, 1), PAGINATION.MAX_LIMIT);
   const cursor = decodeCursor(options.cursor);
 
@@ -264,10 +251,12 @@ export async function searchPublicPastes(options: SearchOptions): Promise<{
   const last = rows[rows.length - 1];
   return {
     data: summaries,
-    ...(hasMore && last
-      ? { cursor: encodeCursor({ t: new Date(last.created_at).toISOString(), id: last.id }) }
-      : {}),
-    hasMore,
+    pagination: {
+      ...(hasMore && last
+        ? { cursor: encodeCursor({ t: new Date(last.created_at).toISOString(), id: last.id }) }
+        : {}),
+      hasMore,
+    },
   };
 }
 
