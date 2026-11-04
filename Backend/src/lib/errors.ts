@@ -19,6 +19,8 @@ export const ERROR_CODES = [
   'IDEMPOTENCY_KEY_REUSED',
   'QUOTA_EXCEEDED',
   'RATE_LIMITED',
+  'OAUTH_EMAIL_UNVERIFIED',
+  'PROVIDER_NOT_CONFIGURED',
   'INTERNAL',
 ] as const;
 
@@ -81,6 +83,14 @@ export class AppError extends Error {
 
   static tooManyRequests(message = 'Too many requests'): AppError {
     return new AppError('RATE_LIMITED', 429, message);
+  }
+
+  static providerNotConfigured(provider: string): AppError {
+    return new AppError('PROVIDER_NOT_CONFIGURED', 503, `OAuth provider "${provider}" is not configured`);
+  }
+
+  static oauthEmailUnverified(): AppError {
+    return new AppError('OAUTH_EMAIL_UNVERIFIED', 400, 'Provider email is not verified; account creation and linking are refused');
   }
 }
 
