@@ -4,21 +4,26 @@ import { logger } from './lib/logger.js';
 import { closePrisma } from './lib/prisma.js';
 import { closeRedis, getRedis } from './lib/redis.js';
 import { closeQueues, getQueueConnection, registerRepeatableJobs } from './queues/queues.js';
+import { startEmailWorker } from './workers/email.worker.js';
 
 /**
  * Worker process entrypoint (docs/ARCHITECTURE.md §12.3, §17).
- * Responsibilities by phase:
- *   Phase 2: expire/purge/analytics processors, expiry sweeper (5 min, authoritative),
- *            repeatable registration (boot re-registration for Redis-loss recovery)
- *   Phase 1: email processor
- *   Phase 8: moderation processor
- * Phase 0 boots the wiring and verifies dependencies.
+ * Phase 1: email processor. Later phases: expire/purge/analytics processors,
+ * expiry sweeper (5 min, authoritative), maintenance crons, moderation.
  */
+let emailWorker: ReturnType<typeof startEmailWorker> | null = null;
+
 async function main(): Promise<void> {
   await getQueueConnection().ping();
   await getRedis().ping();
   await registerRepeatableJobs();
-  logger.info({ nodeEnv: env.NODE_ENV }, 'worker started');
+
+  emailWorker = startEmailWorker();
+  logger.info({ nodeEnv: env.NODE_ENV, workers: ['email'] }, 'worker started');
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 let shuttingDown = false;
@@ -34,7 +39,12 @@ async function shutdown(signal: string): Promise<void> {
   }, 15_000);
 
   try {
-    // Phase 2+ awaits BullMQ worker.close() here (bounded 30 s) before teardown.
+    // Bounded drain: wait for in-flight jobs up to 30 s (docs/ARCHITECTURE.md §17).
+    if (emailWorker) {
+      const worker = emailWorker;
+      emailWorker = null;
+      await Promise.race([worker.close(), delay(30_000)]);
+    }
     await closeQueues();
     await closeRedis();
     await closePrisma();
