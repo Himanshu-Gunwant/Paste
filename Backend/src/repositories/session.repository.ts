@@ -46,4 +46,9 @@ export const sessionRepository = {
       orderBy: { lastUsedAt: 'desc' },
     });
   },
+
+  /** Maintenance sweep (§12.3): drop expired rows. */
+  deleteExpiredBefore(date: Date): Promise<number> {
+    return prisma.session.deleteMany({ where: { expiresAt: { lt: date } } }).then((r) => r.count);
+  },
 };

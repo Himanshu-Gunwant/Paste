@@ -47,12 +47,30 @@ export function getQueue(name: QueueName): Queue {
 
 /**
  * Repeatable jobs are re-registered idempotently at worker boot (fixed repeat
- * keys — docs/ARCHITECTURE.md §12.3 "job reconstruction"). Phase 2 adds the
- * analytics flush (60 s) and maintenance crons (hourly sweeps, daily retention,
- * nightly reconciliation, 5-min trending).
+ * keys — docs/ARCHITECTURE.md §12.3 "job reconstruction"): after a total
+ * Redis loss, boot re-creates every schedule; the sweepers make the queued
+ * jobs themselves non-correctness-bearing.
  */
 export async function registerRepeatableJobs(): Promise<void> {
-  // Intentionally empty in Phase 0 — repeatable schedules arrive with Phase 2.
+  const maintenance = getQueue('maintenance');
+  const schedules: { name: string; repeat: { pattern?: string; every?: number } }[] = [
+    { name: 'sweep-expiry', repeat: { pattern: '*/5 * * * *' } }, // 5 min — AUTHORITATIVE expiry (§10)
+    { name: 'sweep-purge', repeat: { pattern: '10 * * * *' } }, // hourly
+    { name: 'sweep-sessions', repeat: { pattern: '20 * * * *' } },
+    { name: 'sweep-auth-tokens', repeat: { pattern: '25 * * * *' } },
+    { name: 'reconcile-storage', repeat: { pattern: '0 4 * * *' } }, // nightly
+    { name: 'flush-uniques', repeat: { pattern: '40 * * * *' } }, // hourly HLL
+  ];
+  for (const schedule of schedules) {
+    await maintenance.add(schedule.name, {}, { repeat: schedule.repeat });
+  }
+
+  // View-delta flush — 60 s cadence (§12.2).
+  await getQueue('analytics').add(
+    'flush-views',
+    {},
+    { repeat: { every: 60_000 } },
+  );
 }
 
 export async function closeQueues(): Promise<void> {

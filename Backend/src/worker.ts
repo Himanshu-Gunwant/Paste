@@ -5,21 +5,34 @@ import { closePrisma } from './lib/prisma.js';
 import { closeRedis, getRedis } from './lib/redis.js';
 import { closeQueues, getQueueConnection, registerRepeatableJobs } from './queues/queues.js';
 import { startEmailWorker } from './workers/email.worker.js';
+import { startExpireWorker, startPurgeWorker } from './workers/paste-jobs.js';
+import { startAnalyticsWorker } from './workers/analytics.worker.js';
+import { startMaintenanceWorker } from './workers/maintenance.worker.js';
+import type { Worker } from 'bullmq';
 
 /**
  * Worker process entrypoint (docs/ARCHITECTURE.md §12.3, §17).
- * Phase 1: email processor. Later phases: expire/purge/analytics processors,
- * expiry sweeper (5 min, authoritative), maintenance crons, moderation.
+ * Repeatable schedules are re-registered at boot (Redis-loss recovery);
+ * the expiry sweeper is the authoritative expiration enforcement.
  */
-let emailWorker: ReturnType<typeof startEmailWorker> | null = null;
+let workers: Worker[] = [];
 
 async function main(): Promise<void> {
   await getQueueConnection().ping();
   await getRedis().ping();
   await registerRepeatableJobs();
 
-  emailWorker = startEmailWorker();
-  logger.info({ nodeEnv: env.NODE_ENV, workers: ['email'] }, 'worker started');
+  workers = [
+    startEmailWorker(),
+    startExpireWorker(),
+    startPurgeWorker(),
+    startAnalyticsWorker(),
+    startMaintenanceWorker(),
+  ];
+  logger.info(
+    { nodeEnv: env.NODE_ENV, workers: workers.map((w) => w.name) },
+    'worker started',
+  );
 }
 
 function delay(ms: number): Promise<void> {
@@ -40,11 +53,9 @@ async function shutdown(signal: string): Promise<void> {
 
   try {
     // Bounded drain: wait for in-flight jobs up to 30 s (docs/ARCHITECTURE.md §17).
-    if (emailWorker) {
-      const worker = emailWorker;
-      emailWorker = null;
-      await Promise.race([worker.close(), delay(30_000)]);
-    }
+    const draining = workers.map((worker) => worker.close());
+    workers = [];
+    await Promise.race([Promise.allSettled(draining), delay(30_000)]);
     await closeQueues();
     await closeRedis();
     await closePrisma();

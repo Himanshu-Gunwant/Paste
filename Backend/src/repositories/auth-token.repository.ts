@@ -34,4 +34,11 @@ export const authTokenRepository = {
       .deleteMany({ where: { userId, ...(type ? { type } : {}) } })
       .then((r) => r.count);
   },
+
+  /** Maintenance sweep (§12.3): drop expired or fully-consumed tokens. */
+  deleteExpiredBefore(date: Date): Promise<number> {
+    return prisma.authToken
+      .deleteMany({ where: { OR: [{ expiresAt: { lt: date } }, { usedAt: { not: null } }] } })
+      .then((r) => r.count);
+  },
 };
