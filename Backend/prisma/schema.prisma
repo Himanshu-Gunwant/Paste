@@ -88,6 +88,13 @@ model User {
   apiKeys       ApiKey[]
   collections   Collection[]
   bookmarks     Bookmark[]
+  reportsFiled  AbuseReport[]      @relation("Reporter")
+  reportsHandled AbuseReport[]     @relation("Handler")
+  restrictions  UserRestriction[]  @relation("Subject")
+  restrictionsCreated UserRestriction[] @relation("RestrictionCreator")
+  restrictionsLifted  UserRestriction[] @relation("RestrictionLifter")
+  ipBansCreated IpBan[]
+  auditLogs     AuditLog[]
 
   @@map("users")
 }
@@ -197,6 +204,7 @@ model Paste {
   pasteTokens PasteToken[]
   collectionItems CollectionPaste[]
   bookmarks   Bookmark[]
+  abuseReports AbuseReport[]
 
   @@index([authorId, createdAt(sort: Desc)])
   @@index([visibility, language, createdAt(sort: Desc)])
@@ -343,4 +351,109 @@ model Bookmark {
   @@id([userId, pasteId])
   @@index([pasteId])
   @@map("bookmarks")
+}
+
+// ---- Phase 8: Abuse prevention & administration ------------------------------
+
+enum AbuseReason {
+  SPAM
+  MALWARE
+  HARASSMENT
+  COPYRIGHT
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+enum ActorType {
+  USER
+  ADMIN
+  SYSTEM
+  ANONYMOUS
+}
+
+enum RestrictionType {
+  SUSPENSION
+  UPLOAD_BAN
+}
+
+model AbuseReport {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  pasteId        String       @map("paste_id") @db.VarChar(64)
+  reporterId     String?      @map("reporter_id") @db.Uuid // anonymous reports allowed
+  reporterIpHash String       @map("reporter_ip_hash") @db.VarChar(64)
+  reason         AbuseReason
+  details        String?
+  status         ReportStatus @default(OPEN)
+  resolutionNote String?      @map("resolution_note")
+  handledById    String?      @map("handled_by") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  resolvedAt     DateTime?    @map("resolved_at") @db.Timestamptz(6)
+
+  paste     Paste @relation(fields: [pasteId], references: [id], onDelete: Cascade)
+  reporter  User? @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  handledBy User? @relation("Handler", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([pasteId])
+  @@map("abuse_reports")
+}
+
+model AuditLog {
+  id         BigInt    @id @default(autoincrement())
+  actorType  ActorType @map("actor_type")
+  actorId    String?   @map("actor_id") @db.Uuid
+  actorName  String?   @map("actor_name") @db.VarChar(30) // username snapshot
+  action     String    @db.VarChar(80)
+  targetType String?   @map("target_type") @db.VarChar(40)
+  targetId   String?   @map("target_id") @db.VarChar(64)
+  metadata   Json?
+  ipHash     String?   @map("ip_hash") @db.VarChar(64)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model UserRestriction {
+  id          String          @id @default(uuid(7)) @db.Uuid
+  userId      String          @map("user_id") @db.Uuid
+  type        RestrictionType
+  reason      String
+  startsAt    DateTime        @default(now()) @map("starts_at") @db.Timestamptz(6)
+  endsAt      DateTime?       @map("ends_at") @db.Timestamptz(6) // NULL = permanent
+  liftedAt    DateTime?       @map("lifted_at") @db.Timestamptz(6)
+  liftedById  String?         @map("lifted_by") @db.Uuid
+  createdById String          @map("created_by") @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user      User  @relation("Subject", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User  @relation("RestrictionCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  liftedBy  User? @relation("RestrictionLifter", fields: [liftedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, type])
+  @@map("user_restrictions")
+}
+
+model IpBan {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  ipHash      String    @unique @map("ip_hash") @db.VarChar(64) // SHA-256 of normalized IP
+  subnetHash  String?   @map("subnet_hash") @db.VarChar(64) // optional /24 ban
+  reason      String
+  createdById String    @map("created_by") @db.Uuid
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@map("ip_bans")
 }
