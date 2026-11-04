@@ -52,3 +52,36 @@ export function passwordPolicyError(password: string): string | null {
   }
   return null;
 }
+
+// --- Paste passwords ---------------------------------------------------------
+// Argon2id with lighter parameters than login (docs/ARCHITECTURE.md §5.2):
+// paste unlock happens on the read path and is rate-limited per IP+paste.
+
+const PASTE_ARGON2_OPTS = {
+  type: argon2.argon2id,
+  memoryCost: 10_240,
+  timeCost: 1,
+  parallelism: 1,
+} as const;
+
+let pasteDummyHashPromise: Promise<string> | null = null;
+
+function getPasteDummyHash(): Promise<string> {
+  pasteDummyHashPromise ??= argon2.hash('paste-dummy-timing-input', PASTE_ARGON2_OPTS);
+  return pasteDummyHashPromise;
+}
+
+export async function hashPastePassword(password: string): Promise<string> {
+  return argon2.hash(password, PASTE_ARGON2_OPTS);
+}
+
+export async function verifyPastePassword(
+  hash: string | null | undefined,
+  password: string,
+): Promise<boolean> {
+  if (!hash) {
+    await argon2.verify(await getPasteDummyHash(), password);
+    return false;
+  }
+  return argon2.verify(hash, password);
+}

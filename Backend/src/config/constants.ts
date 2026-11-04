@@ -106,3 +106,39 @@ export const OAUTH_ENDPOINTS = {
 export function deletedEmailFor(userId: string): string {
   return `deleted+${userId}@invalid`;
 }
+
+// --- Phase 2: paste core (docs/ARCHITECTURE.md §4 A/B/C) ---------------------
+
+/** ExpiresIn presets (seconds) — converted to absolute timestamps at creation. */
+export const EXPIRES_IN_PRESETS_SECONDS = {
+  '10min': 10 * 60,
+  '1h': 60 * 60,
+  '1d': 24 * 60 * 60,
+  '1w': 7 * 24 * 60 * 60,
+  '1m': 30 * 24 * 60 * 60,
+} as const;
+
+export type ExpiresInPreset = keyof typeof EXPIRES_IN_PRESETS_SECONDS;
+
+export const PASTE_ID_COLLISION_RETRIES = 3;
+export const LANGUAGE_PATTERN = /^[a-z0-9+#-]{1,30}$/;
+export const SLUG_PATTERN = /^[a-z0-9_-]{3,64}$/;
+export const PASTE_PASSWORD_MIN = 4;
+export const PASTE_PASSWORD_MAX = 128;
+
+/** Redis keyspace (docs/ARCHITECTURE.md §12.1). */
+export const REDIS_KEYS = {
+  anonQuota: (ip: string, date: string) => `quota:anon:${ip}:${date}`,
+  viewDelta: (pasteId: string) => `views:delta:${pasteId}`,
+  viewInflight: (pasteId: string, runId: string) => `views:inflight:${pasteId}:${runId}`,
+  uv: (pasteId: string, date: string) => `uv:${pasteId}:${date}`,
+  mgmtCache: (pasteId: string) => `mgmt:${pasteId}`,
+} as const;
+
+/** Management-token read-through cache TTL (DB hash remains authoritative). */
+export const MGMT_CACHE_TTL_SECONDS = 900;
+
+/** Anonymous management token: expires with the paste when it has a TTL. */
+export function utcDateKey(now: Date = new Date()): string {
+  return now.toISOString().slice(0, 10);
+}
