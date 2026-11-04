@@ -4,7 +4,7 @@
 // PHASE — this schema grows as phases are implemented, and never contains
 // models for unimplemented modules:
 //
-//   Phase 1: User, Session, OAuthAccount, AuthToken
+//   Phase 1 (shipped): User, Session, OAuthAccount, AuthToken
 //   Phase 2: Paste, PasteRevision, PasteViewDaily, PasteToken (+ raw SQL
 //            migration 001_partial_indexes.sql — stable predicates only,
 //            expiry filtering exclusively via query WHERE clauses)
@@ -30,4 +30,96 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Phase 0 baseline: no business tables yet.
+// ---- Phase 1: Auth & users -------------------------------------------------
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum AuthTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+enum OAuthProvider {
+  GOOGLE
+  GITHUB
+}
+
+model User {
+  id            String     @id @default(uuid(7)) @db.Uuid
+  email         String     @unique @db.VarChar(255) // lowercased at app layer
+  emailVerified Boolean    @default(false) @map("email_verified")
+  // NULL for OAuth-only accounts (docs/ARCHITECTURE.md §4 D)
+  passwordHash  String?    @map("password_hash")
+  username      String     @unique @db.VarChar(30) // immutable, reserved-word list
+  displayName   String?    @map("display_name") @db.VarChar(80)
+  bio           String?    @db.VarChar(280)
+  avatarUrl     String?    @map("avatar_url")
+  websiteUrl    String?    @map("website_url")
+  role          UserRole   @default(USER)
+  status        UserStatus @default(ACTIVE)
+  // Denormalized byte counter maintained by services; nightly reconcile (§4 K)
+  storageUsed   BigInt     @default(0) @map("storage_used")
+  // Soft delete / anonymization (email → deleted+{id}@invalid on delete)
+  deletedAt     DateTime?  @map("deleted_at") @db.Timestamptz(6)
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sessions      Session[]
+  oauthAccounts OAuthAccount[]
+  authTokens    AuthToken[]
+
+  @@map("users")
+}
+
+// Session token hash is the PK: one indexed lookup per authenticated request.
+model Session {
+  id         String   @id @db.VarChar(64) // SHA-256 hex of 32-byte session token
+  userId     String   @map("user_id") @db.Uuid
+  ip         String?  @db.VarChar(45) // user's own data, shown in sessions UI
+  userAgent  String?  @map("user_agent") @db.VarChar(255)
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6) // rolling 30-day idle
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastUsedAt DateTime @default(now()) @map("last_used_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model OAuthAccount {
+  id                String        @id @default(uuid(7)) @db.Uuid
+  userId            String        @map("user_id") @db.Uuid
+  provider          OAuthProvider
+  providerAccountId String        @map("provider_account_id") @db.VarChar(64)
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("oauth_accounts")
+}
+
+// Unified single-use email tokens: EMAIL_VERIFICATION (24 h) / PASSWORD_RESET (1 h)
+model AuthToken {
+  id        String        @id @db.VarChar(64) // SHA-256 hex of token
+  userId    String        @map("user_id") @db.Uuid
+  type      AuthTokenType
+  expiresAt DateTime      @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime?     @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@map("auth_tokens")
+}
