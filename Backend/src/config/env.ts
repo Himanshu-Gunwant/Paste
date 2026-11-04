@@ -15,6 +15,27 @@ const envSchema = z.object({
   TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(1),
   // Browser origin allowed to call the API with cookies. Unset = CORS disabled.
   FRONTEND_ORIGIN: z.url().optional(),
+  // Public base URL of this API (OAuth redirect URIs, email confirmation links).
+  APP_BASE_URL: z.url().default('http://localhost:3000'),
+
+  // --- Phase 1: auth ---
+  // Future HMAC key (analytics visitor hashing); validated when present.
+  SESSION_SECRET: z.string().min(32).optional(),
+
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  EMAIL_FROM: z.string().default('Paste <no-reply@localhost>'),
+
+  // OAuth providers — endpoints return 503 until both values are configured.
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+  // Test hook: JSON map overriding provider endpoints, e.g.
+  // {"google":{"auth":"...","token":"...","userinfo":"..."},"github":{...}}
+  OAUTH_ENDPOINTS_JSON: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -42,3 +63,18 @@ function bootEnv(): Env {
 }
 
 export const env: Env = bootEnv();
+
+/** Parsed OAuth endpoint overrides (used by integration tests' mock servers). */
+export const oauthEndpointOverrides: Record<
+  string,
+  Partial<Record<'auth' | 'token' | 'userinfo' | 'api', string>>
+> = (() => {
+  if (!env.OAUTH_ENDPOINTS_JSON) return {};
+  try {
+    const parsed: unknown = JSON.parse(env.OAUTH_ENDPOINTS_JSON);
+    return parsed && typeof parsed === 'object' ? (parsed as typeof oauthEndpointOverrides) : {};
+  } catch {
+    console.error('OAUTH_ENDPOINTS_JSON is not valid JSON; ignoring');
+    return {};
+  }
+})();

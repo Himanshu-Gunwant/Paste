@@ -61,3 +61,45 @@ export const API_DAILY_QUOTA = 1000;
 /** View flush cadence and tolerance (docs/ARCHITECTURE.md §12.2). */
 export const VIEW_FLUSH_INTERVAL_SECONDS = 60;
 export const VIEW_COUNT_RECONCILE_TOLERANCE = 0.05;
+
+// --- Phase 1: auth (docs/ARCHITECTURE.md §4 D) ------------------------------
+
+/** Rolling idle expiry for sessions. */
+export const SESSION_IDLE_DAYS = 30;
+/** A session's lastUsedAt/expiresAt row is rewritten at most this often. */
+export const SESSION_TOUCH_THRESHOLD_HOURS = 1;
+
+export const EMAIL_VERIFICATION_TTL_HOURS = 24;
+export const PASSWORD_RESET_TTL_HOURS = 1;
+
+export const PASSWORD_MIN_LENGTH = 10;
+export const PASSWORD_MAX_LENGTH = 128;
+
+export const USERNAME_MIN = 3;
+export const USERNAME_MAX = 30;
+/** Usernames are lowercased at the app layer before this pattern is applied. */
+export const USERNAME_PATTERN = /^[a-z0-9_-]+$/;
+
+export const SESSION_COOKIE = '__Host-sess';
+export const OAUTH_STATE_COOKIE = '__Host-oauth';
+export const OAUTH_STATE_TTL_SECONDS = 600;
+export const OAUTH_CALLBACK_PATH = '/api/v1/auth/oauth';
+
+/** OAuth provider endpoints (docs/ARCHITECTURE.md §4 D). */
+export const OAUTH_ENDPOINTS = {
+  google: {
+    auth: 'https://accounts.google.com/o/oauth2/v2/auth',
+    token: 'https://oauth2.googleapis.com/token',
+    userinfo: 'https://openidconnect.googleapis.com/v1/userinfo',
+  },
+  github: {
+    auth: 'https://github.com/login/oauth/authorize',
+    token: 'https://github.com/login/oauth/access_token',
+    api: 'https://api.github.com',
+  },
+} as const;
+
+/** Account deletion anonymization marker (docs/ARCHITECTURE.md §5.2). */
+export function deletedEmailFor(userId: string): string {
+  return `deleted+${userId}@invalid`;
+}
