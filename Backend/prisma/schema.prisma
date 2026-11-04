@@ -1,18 +1,10 @@
 // Pastebin platform backend — Prisma schema.
 //
-// Per the approved architecture (docs/ARCHITECTURE.md §19), migrations ship PER
-// PHASE — this schema grows as phases are implemented, and never contains
-// models for unimplemented modules:
-//
-//   Phase 1 (shipped): User, Session, OAuthAccount, AuthToken
-//   Phase 2 (shipped): Paste, PasteRevision, PasteViewDaily, PasteToken
-//            (+ raw SQL migration with partial indexes — stable predicates
-//            only; expiry filtering exclusively via query WHERE clauses)
-//   Phase 3: (no new tables — revisions land with Paste in Phase 2)
-//   Phase 4: raw SQL migration 002_search_vector.sql (tsvector + GIN)
-//   Phase 5: ApiKey, ApiUsage
-//   Phase 6: Collection, CollectionPaste, Bookmark
-//   Phase 8: AbuseReport, AuditLog, UserRestriction, IpBan
+// ALL roadmap phases shipped (0-9, complete 2026-11-05) — model set final
+// for v1: users, sessions, oauth_accounts, auth_tokens, pastes,
+// paste_revisions, paste_view_daily, paste_tokens, api_keys, api_usage,
+// collections, collection_pastes, bookmarks, abuse_reports, audit_logs,
+// user_restrictions, ip_bans (17 tables).
 //
 // Key contract points (docs/ARCHITECTURE.md §5):
 //   - Paste.content is nullable with the tombstone invariant:
