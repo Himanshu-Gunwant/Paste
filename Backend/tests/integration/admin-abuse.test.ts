@@ -15,7 +15,6 @@ describe.skipIf(!run)('integration: abuse & administration', () => {
   let closeServer: () => Promise<void>;
   const suffix = uniqueSuffix();
   let adminId = '';
-  let userId = '';
   let bannedUserId = '';
 
   beforeAll(async () => {
@@ -29,7 +28,7 @@ describe.skipIf(!run)('integration: abuse & administration', () => {
     const reg = await user.json('POST', '/api/v1/auth/register', {
       body: { email: `mod-${suffix}@example.test`, username: `moduser-${suffix}`.slice(0, 30), password: PASSWORD },
     });
-    userId = reg.body.user.id;
+    void reg.body.user.id; // registration sanity only
 
     const adminRow = await prisma.user.create({
       data: {
