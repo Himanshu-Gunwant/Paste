@@ -30,3 +30,6 @@ prisma/*.db
 
 # ZCode session artifacts
 .zcode/
+
+# Prisma 7 generated client (created by `prisma generate`)
+src/generated/

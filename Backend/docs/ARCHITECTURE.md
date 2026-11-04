@@ -86,7 +86,7 @@ flowchart TB
 | Language | TypeScript (strict mode) | Compile-time contracts | `strict: true`, `noUncheckedIndexedAccess` |
 | Framework | **Express 5** | Spec'd; v5 auto-forwards async errors | Express 4 rejected: manual async plumbing |
 | DB | PostgreSQL 16 | Relational core, FTS, partial indexes, strong consistency | — |
-| ORM | Prisma | Type-safe queries, migrations, schema-as-code | Gaps: partial indexes & `tsvector` need raw SQL migrations (§5.3) |
+| ORM | Prisma 7 (driver adapters) | Type-safe queries, migrations, schema-as-code; queries via @prisma/adapter-pg (D-002) | Gaps: partial indexes & `tsvector` need raw SQL migrations (§5.3); generated client gitignored |
 | Cache/queues | Redis 7 + BullMQ | Rate limiting, view buffering, delayed jobs in one dependency | AOF everysec + noeviction; holds only reconstructable state |
 | Validation | Zod | Runtime validation + OpenAPI generation from the same schemas | `@asteasolutions/zod-to-openapi` |
 | Auth | Custom sessions (Argon2id, httpOnly cookies) + OAuth (Google/GitHub, state+PKCE) | Full control; session = DB row + hashed token cookie | Sessions in **PostgreSQL**, not Redis |

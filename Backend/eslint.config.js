@@ -1,7 +1,7 @@
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist/', 'node_modules/', 'coverage/', 'openapi.json'] },
+  { ignores: ['dist/', 'node_modules/', 'coverage/', 'openapi.json', 'src/generated/'] },
   ...tseslint.configs.recommended,
   {
     rules: {

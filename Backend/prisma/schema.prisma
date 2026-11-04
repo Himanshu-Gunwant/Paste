@@ -21,13 +21,20 @@
 //     PostgreSQL and are authoritative; Redis is an optional read-through cache.
 //   - expires_at IS NULL means "never expires".
 
+// New prisma-client generator (Prisma 7): emits TypeScript ESM sources into
+// src/generated/prisma (gitignored; `prisma generate` runs on postinstall/CI).
+// Runtime queries go through the @prisma/adapter-pg driver adapter — no
+// native query engine (docs/ARCHITECTURE.md §3; DECISIONS.md D-002).
 generator client {
-  provider = "prisma-client-js"
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ---- Phase 1: Auth & users -------------------------------------------------
