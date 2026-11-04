@@ -57,6 +57,10 @@ function toDbProvider(id: OAuthProviderId): OAuthProviderDb {
   return id === 'google' ? 'GOOGLE' : 'GITHUB';
 }
 
+function callbackUrl(provider: OAuthProviderId): string {
+  return `${env.APP_BASE_URL}${OAUTH_CALLBACK_PATH}/${provider}/callback`;
+}
+
 function credentials(provider: OAuthProviderId): { clientId: string; clientSecret: string } {
   const clientId = provider === 'google' ? env.GOOGLE_CLIENT_ID : env.GITHUB_CLIENT_ID;
   const clientSecret = provider === 'google' ? env.GOOGLE_CLIENT_SECRET : env.GITHUB_CLIENT_SECRET;
@@ -84,7 +88,7 @@ export function start(provider: OAuthProviderId): StartResult {
   const usesPkce = USES_PKCE[provider];
   const verifier = usesPkce ? generateToken(64) : undefined;
 
-  const redirectUri = `${env.APP_BASE_URL}${OAUTH_CALLBACK_PATH}/${provider}`;
+  const redirectUri = callbackUrl(provider);
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
@@ -154,7 +158,7 @@ async function exchangeAndFetchProfile(
 ): Promise<ProviderProfile> {
   const { clientId, clientSecret } = credentials(provider);
   const ep = endpoints(provider);
-  const redirectUri = `${env.APP_BASE_URL}${OAUTH_CALLBACK_PATH}/${provider}`;
+  const redirectUri = callbackUrl(provider);
 
   const body = new URLSearchParams({
     client_id: clientId,

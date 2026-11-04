@@ -1,4 +1,4 @@
-import type { Request, RequestHandler } from 'express';
+import type { RequestHandler } from 'express';
 import * as userService from '../services/user.service.js';
 import * as sessionService from '../services/session.service.js';
 import type { DeleteMeBody, UpdateMeBody } from '../validators/user.validators.js';
