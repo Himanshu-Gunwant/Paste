@@ -5,9 +5,9 @@
 // models for unimplemented modules:
 //
 //   Phase 1 (shipped): User, Session, OAuthAccount, AuthToken
-//   Phase 2: Paste, PasteRevision, PasteViewDaily, PasteToken (+ raw SQL
-//            migration 001_partial_indexes.sql — stable predicates only,
-//            expiry filtering exclusively via query WHERE clauses)
+//   Phase 2 (shipped): Paste, PasteRevision, PasteViewDaily, PasteToken
+//            (+ raw SQL migration with partial indexes — stable predicates
+//            only; expiry filtering exclusively via query WHERE clauses)
 //   Phase 3: (no new tables — revisions land with Paste in Phase 2)
 //   Phase 4: raw SQL migration 002_search_vector.sql (tsvector + GIN)
 //   Phase 5: ApiKey, ApiUsage
@@ -83,6 +83,8 @@ model User {
   sessions      Session[]
   oauthAccounts OAuthAccount[]
   authTokens    AuthToken[]
+  pastes        Paste[]
+  pasteTokensCreated PasteToken[] @relation("PasteTokenCreator")
 
   @@map("users")
 }
@@ -129,4 +131,122 @@ model AuthToken {
 
   @@index([userId, type])
   @@map("auth_tokens")
+}
+
+// ---- Phase 2: Paste core ----------------------------------------------------
+
+enum Visibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+enum DeletedBy {
+  USER
+  MODERATOR
+  SYSTEM
+}
+
+enum TokenPurpose {
+  MANAGEMENT
+  SHARE
+}
+
+// NOTE: custom_slug has NO @unique here — its UNIQUE constraint is a PARTIAL
+// index (WHERE custom_slug IS NOT NULL) created by the raw-SQL migration with
+// the other partial indexes (stable predicates only — never now(), §5.3).
+model Paste {
+  id               String     @id @db.VarChar(12) // public short id or custom slug
+  authorId         String?    @map("author_id") @db.Uuid // NULL = anonymous paste
+  customSlug       String?    @map("custom_slug") @db.VarChar(64)
+  title            String?    @db.VarChar(140)
+  description      String?    @db.VarChar(500)
+  language         String?    @db.VarChar(50) // user-declared
+  detectedLanguage String?    @map("detected_language") @db.VarChar(50) // heuristic
+  // Tombstone invariant: non-null iff deleted_at IS NULL (tombstoning nulls
+  // it in the same tx as deleted_at — docs/ARCHITECTURE.md §5.2).
+  content          String?    @db.Text
+  contentSize      Int        @map("content_size") // original bytes, kept after tombstoning
+  contentHash      String     @map("content_hash") @db.VarChar(64) // SHA-256
+  visibility       Visibility @default(PUBLIC)
+  passwordHash     String?    @map("password_hash") // Argon2id (lighter params than login)
+  maxViews         Int?       @map("max_views") // synchronous enforcement (exact)
+  viewCount        BigInt     @default(0) @map("view_count") // Redis-buffered flush
+  burnAfterRead    Boolean    @default(false) @map("burn_after_read")
+  burnedAt         DateTime?  @map("burned_at") @db.Timestamptz(6)
+  // NULL = never expires; read-path filter: (expires_at IS NULL OR expires_at > now())
+  expiresAt        DateTime?  @map("expires_at") @db.Timestamptz(6)
+  deletedAt        DateTime?  @map("deleted_at") @db.Timestamptz(6)
+  deletedBy        DeletedBy? @map("deleted_by")
+  forkOfId         String?    @map("fork_of_id") @db.VarChar(12)
+  latestRevisionNo Int        @default(1) @map("latest_revision_no")
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  author      User?         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  forkOf      Paste?        @relation("ForkSource", fields: [forkOfId], references: [id], onDelete: SetNull)
+  forks       Paste[]       @relation("ForkSource")
+  revisions   PasteRevision[]
+  viewDaily   PasteViewDaily[]
+  pasteTokens PasteToken[]
+
+  @@index([authorId, createdAt(sort: Desc)])
+  @@index([visibility, language, createdAt(sort: Desc)])
+  @@index([contentHash])
+  @@map("pastes")
+}
+
+// Full content snapshots, capped (drop-oldest) — docs/ARCHITECTURE.md §4 E.
+model PasteRevision {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  pasteId     String   @map("paste_id") @db.VarChar(12)
+  revisionNo  Int      @map("revision_no")
+  title       String?  @db.VarChar(140)
+  description String?  @db.VarChar(500)
+  language    String?  @db.VarChar(50)
+  content     String   @db.Text
+  contentSize Int      @map("content_size")
+  editorId    String?  @map("editor_id") @db.Uuid // NULL for anon/management-token edits
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  paste Paste @relation(fields: [pasteId], references: [id], onDelete: Cascade)
+
+  @@unique([pasteId, revisionNo])
+  @@map("paste_revisions")
+}
+
+// Aggregated analytics — no raw per-view table; uniques come from Redis HLL.
+model PasteViewDaily {
+  pasteId        String   @map("paste_id") @db.VarChar(12)
+  day            DateTime @db.Date
+  views          BigInt   @default(0)
+  uniqueVisitors BigInt   @default(0) @map("unique_visitors")
+
+  paste Paste @relation(fields: [pasteId], references: [id], onDelete: Cascade)
+
+  @@id([pasteId, day])
+  @@map("paste_view_daily")
+}
+
+// Unified paste-scoped bearer tokens: anonymous MANAGEMENT credentials and
+// SHARE links. Hash in PostgreSQL is authoritative; Redis mgmt:{pasteId} is
+// an optional read-through cache only (docs/ARCHITECTURE.md §4 B).
+model PasteToken {
+  id        String       @id @default(uuid(7)) @db.Uuid
+  pasteId   String       @map("paste_id") @db.VarChar(12)
+  tokenHash String       @unique @map("token_hash") @db.VarChar(64) // SHA-256 hex; raw shown once
+  purpose   TokenPurpose
+  createdBy String?      @map("created_by") @db.Uuid // NULL for anonymous management tokens
+  // NULL = valid while the paste exists (mirrors paste TTL when set)
+  expiresAt DateTime?    @map("expires_at") @db.Timestamptz(6)
+  maxUses   Int?         @map("max_uses")
+  useCount  Int          @default(0) @map("use_count")
+  revokedAt DateTime?    @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  paste         Paste @relation(fields: [pasteId], references: [id], onDelete: Cascade)
+  createdByUser User? @relation("PasteTokenCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([pasteId, purpose])
+  @@map("paste_tokens")
 }
