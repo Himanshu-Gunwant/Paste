@@ -18,6 +18,7 @@ import { pasteTokenRepository } from '../repositories/paste-token.repository.js'
 import { prisma } from '../lib/prisma.js';
 import { authorizePasteManage, authorizePasteView, type PasteViewContext } from './access-policy.js';
 import { consumeAnonymousPasteQuota } from './anonymous-quota.service.js';
+import { assertNotUploadBanned } from './admin.service.js';
 import { recordView, visitorHash } from './view.service.js';
 import { cancelPasteExpiration, schedulePasteExpiration, schedulePastePurge } from '../queues/paste-jobs.js';
 import type { AuthContext } from '../types/auth.js';
@@ -96,6 +97,8 @@ export async function createPaste(
   const authorId = auth.kind === 'anonymous' ? null : auth.user.id;
   if (authorId === null) {
     await consumeAnonymousPasteQuota(options.ip);
+  } else {
+    await assertNotUploadBanned(authorId);
   }
 
   const id = await resolvePasteId(body.customSlug);

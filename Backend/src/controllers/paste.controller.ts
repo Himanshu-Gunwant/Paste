@@ -1,4 +1,6 @@
 import type { Request, RequestHandler, Response } from 'express';
+import { AppError } from '../lib/errors.js';
+import { verifyCaptcha } from '../lib/captcha.js';
 import * as pasteService from '../services/paste.service.js';
 import type { PasteWithAuthor } from '../services/paste.service.js';
 import type { AuthContext } from '../types/auth.js';
@@ -59,6 +61,12 @@ function toPasteView(
 }
 
 export const create: RequestHandler = async (req, res) => {
+  if (req.auth.kind === 'anonymous') {
+    const captchaToken = typeof req.headers['x-captcha-token'] === 'string' ? req.headers['x-captcha-token'] : undefined;
+    if (!(await verifyCaptcha(captchaToken, req.ip ?? null))) {
+      throw new AppError('VALIDATION_ERROR', 400, 'CAPTCHA verification failed');
+    }
+  }
   const body = req.validated.body as CreatePasteBody;
   const result = await pasteService.createPaste(body, req.auth, { ip: req.ip ?? null });
   res.status(201).json({

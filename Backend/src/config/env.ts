@@ -33,6 +33,12 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
+  // CAPTCHA integration point (§4 J) — provider 'none' disables checks.
+  CAPTCHA_PROVIDER: z.enum(['none', 'turnstile']).default('none'),
+  CAPTCHA_SITE_KEY: z.string().optional(),
+  CAPTCHA_SECRET_KEY: z.string().optional(),
+  // Test hook: verify-endpoint override for the mock captcha provider.
+  CAPTCHA_VERIFY_URL: z.string().optional(),
   // Test hook: JSON map overriding provider endpoints, e.g.
   // {"google":{"auth":"...","token":"...","userinfo":"..."},"github":{...}}
   OAUTH_ENDPOINTS_JSON: z.string().optional(),

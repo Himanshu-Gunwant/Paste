@@ -6,6 +6,7 @@ import {
 } from '../config/constants.js';
 import { env } from '../config/env.js';
 import { getCookie } from '../lib/cookies.js';
+import { verifyCaptcha } from '../lib/captcha.js';
 import { AppError } from '../lib/errors.js';
 import * as authService from '../services/auth.service.js';
 import * as oauthService from '../services/oauth.service.js';
@@ -49,6 +50,10 @@ function clientInput(req: Request): { ip: string | null; userAgent: string | nul
 }
 
 export const register: RequestHandler = async (req, res) => {
+  const captchaToken = typeof req.headers['x-captcha-token'] === 'string' ? req.headers['x-captcha-token'] : undefined;
+  if (!(await verifyCaptcha(captchaToken, req.ip ?? null))) {
+    throw new AppError('VALIDATION_ERROR', 400, 'CAPTCHA verification failed');
+  }
   const body = req.validated.body as RegisterBody;
   const { user, sessionToken } = await authService.register({ ...body, ...clientInput(req) });
   setSessionCookie(res, sessionToken);

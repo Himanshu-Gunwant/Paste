@@ -10,6 +10,9 @@ import { discoveryRouter } from './discovery.routes.js';
 import { apiKeysRouter } from './api-key.routes.js';
 import { authRouter } from './auth.routes.js';
 import { collectionsRouter } from './collection.routes.js';
+import { reportsRouter } from './reports.routes.js';
+import { adminRouter } from './admin.routes.js';
+import { ipBanGuard } from '../middleware/ip-guard.js';
 import { pastesRouter } from './paste.routes.js';
 import { userRouter } from './user.routes.js';
 
@@ -29,6 +32,7 @@ apiRouter.use(authContext());
 apiRouter.use(apiKeyQuota()); // API-key daily quotas (§4 H)
 apiRouter.use(apiUsageRecorder()); // buffered usage capture
 apiRouter.use(idempotencyGuard()); // paste-creation idempotency keys
+apiRouter.use(ipBanGuard()); // anonymous write paths (§4 J)
 
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/users', userRouter);
@@ -36,6 +40,8 @@ apiRouter.use(discoveryRouter); // GET /pastes, /search, /languages
 apiRouter.use('/pastes', pastesRouter);
 apiRouter.use('/api-keys', apiKeysRouter);
 apiRouter.use('/collections', collectionsRouter);
+apiRouter.use('/reports', reportsRouter);
+apiRouter.use('/admin', adminRouter);
 
 // Phase 3+: revisionsRouter (under /pastes/:id/revisions), collectionsRouter,
 // bookmarksRouter, searchRouter, apiKeysRouter, analyticsRouter, adminRouter.
