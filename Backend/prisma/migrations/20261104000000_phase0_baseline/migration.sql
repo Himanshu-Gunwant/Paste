@@ -1,0 +1,8 @@
+-- Phase 0 baseline: no business tables yet.
+-- Models ship per phase (docs/ARCHITECTURE.md section 19):
+--   Phase 1: users, sessions, oauth_accounts, auth_tokens
+--   Phase 2: pastes, paste_revisions, paste_tokens, paste_view_daily + 001_partial_indexes.sql
+--   Phase 4: 002_search_vector.sql
+--   Phase 5: api_keys, api_usage
+--   Phase 6: collections, collection_pastes, bookmarks
+--   Phase 8: abuse_reports, audit_logs, user_restrictions, ip_bans
