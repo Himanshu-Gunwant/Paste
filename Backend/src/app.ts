@@ -6,6 +6,8 @@ import { REQUEST_BODY_LIMIT } from './config/constants.js';
 import { requestLogging } from './middleware/request-context.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { mountOpenApi } from './plugins/openapi.js';
+import { metricsTiming, mountMetrics } from './plugins/metrics.js';
+import { createBullBoardRouter } from './plugins/bull-board.js';
 import { embed } from './controllers/embed.controller.js';
 import { healthRouter } from './routes/health.js';
 import { apiRouter } from './routes/index.js';
@@ -20,6 +22,7 @@ export function createApp(): express.Express {
   const app = express();
 
   app.disable('x-powered-by');
+  app.use(metricsTiming()); // before routes — full request span
   app.set('trust proxy', env.TRUST_PROXY);
 
   app.use(
@@ -45,6 +48,11 @@ export function createApp(): express.Express {
 
   // OpenAPI document + Swagger UI (public, docs/ARCHITECTURE.md §4 H).
   mountOpenApi(app);
+
+  // Prometheus metrics — Nginx DENYs /metrics publicly (§16).
+  mountMetrics(app);
+  // Bull Board dead-letter view — Nginx IP-allowlists /admin/queues (§12.3).
+  app.use('/admin/queues', createBullBoardRouter());
 
   // Unversioned operational endpoints (Nginx exposes /healthz and /readyz).
   app.use(healthRouter);
