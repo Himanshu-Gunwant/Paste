@@ -9,6 +9,7 @@ import { idempotencyGuard } from '../middleware/idempotency.js';
 import { discoveryRouter } from './discovery.routes.js';
 import { apiKeysRouter } from './api-key.routes.js';
 import { authRouter } from './auth.routes.js';
+import { collectionsRouter } from './collection.routes.js';
 import { pastesRouter } from './paste.routes.js';
 import { userRouter } from './user.routes.js';
 
@@ -34,6 +35,7 @@ apiRouter.use('/users', userRouter);
 apiRouter.use(discoveryRouter); // GET /pastes, /search, /languages
 apiRouter.use('/pastes', pastesRouter);
 apiRouter.use('/api-keys', apiKeysRouter);
+apiRouter.use('/collections', collectionsRouter);
 
 // Phase 3+: revisionsRouter (under /pastes/:id/revisions), collectionsRouter,
 // bookmarksRouter, searchRouter, apiKeysRouter, analyticsRouter, adminRouter.

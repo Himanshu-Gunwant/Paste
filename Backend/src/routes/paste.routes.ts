@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import { RATE_LIMITS } from '../config/constants.js';
 import { rateLimit } from '../middleware/rate-limit.js';
+import { requireAuth } from '../middleware/require-auth.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
 import * as pasteController from '../controllers/paste.controller.js';
 import * as revisionsController from '../controllers/revisions.controller.js';
+import * as collectionController from '../controllers/collection.controller.js';
 import {
   createPasteSchema,
   diffQuerySchema,
@@ -78,6 +80,11 @@ pastesRouter.patch(
 );
 
 pastesRouter.delete('/:id', writeLimiter, validateParams(idOrSlugParamsSchema), pasteController.remove);
+
+// Bookmarks (Phase 6) — session required, viewability-gated, idempotent.
+const bookmarkLimiter = rateLimit({ bucket: 'bookmark', limit: 120, windowSeconds: 60 });
+pastesRouter.put('/:id/bookmark', bookmarkLimiter, requireAuth(), validateParams(idOrSlugParamsSchema), collectionController.addBookmark);
+pastesRouter.delete('/:id/bookmark', bookmarkLimiter, requireAuth(), validateParams(idOrSlugParamsSchema), collectionController.removeBookmark);
 
 // Revisions (Phase 3) — readable by anyone who can read the paste; restore
 // requires the manage decision (owner/management token/admin).
