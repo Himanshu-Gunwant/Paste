@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/require-auth.js';
-import { validateBody, validateParams } from '../middleware/validate.js';
+import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
 import * as userController from '../controllers/user.controller.js';
 import {
   deleteMeSchema,
@@ -8,6 +8,7 @@ import {
   updateMeSchema,
   usernameParamsSchema,
 } from '../validators/user.validators.js';
+import { feedQuerySchema } from '../validators/discovery.validators.js';
 
 /**
  * User routes (docs/ARCHITECTURE.md §7.2). /me routes require a session and
@@ -22,6 +23,9 @@ userRouter.delete('/me', requireAuth(), validateBody(deleteMeSchema), userContro
 userRouter.get('/me/sessions', requireAuth(), userController.listSessions);
 userRouter.delete('/me/sessions', requireAuth(), userController.revokeAllSessions);
 userRouter.delete('/me/sessions/:id', requireAuth(), validateParams(sessionIdParamsSchema), userController.revokeSession);
+
+// Public pastes (leak-proof: database-level PUBLIC + live + active filters).
+userRouter.get('/:username/pastes', validateParams(usernameParamsSchema), validateQuery(feedQuerySchema), userController.getUserPublicPastes);
 
 // Public profile (uniform 404 for missing/deleted/suspended users).
 userRouter.get('/:username', validateParams(usernameParamsSchema), userController.getPublicProfile);

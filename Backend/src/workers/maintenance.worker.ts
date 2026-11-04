@@ -8,6 +8,7 @@ import { pasteRepository } from '../repositories/paste.repository.js';
 import { sessionRepository } from '../repositories/session.repository.js';
 import { authTokenRepository } from '../repositories/auth-token.repository.js';
 import { flushUniqueVisitors } from '../services/view.service.js';
+import { recomputeTrending } from '../services/discovery.service.js';
 
 /**
  * Maintenance sweepers (docs/ARCHITECTURE.md §12.3) — cron-driven, all
@@ -89,6 +90,9 @@ export async function processMaintenanceJob(job: Job): Promise<void> {
       break;
     case 'flush-uniques':
       await flushUniqueVisitors();
+      break;
+    case 'recompute-trending':
+      await recomputeTrending();
       break;
     default:
       logger.warn({ name: job.name }, 'unknown maintenance job');

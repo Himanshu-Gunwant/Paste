@@ -134,10 +134,16 @@ export const REDIS_KEYS = {
   viewInflight: (pasteId: string, runId: string) => `views:inflight:${pasteId}:${runId}`,
   uv: (pasteId: string, date: string) => `uv:${pasteId}:${date}`,
   mgmtCache: (pasteId: string) => `mgmt:${pasteId}`,
+  trending: () => 'trending:ids',
+  languagesCache: () => 'cache:languages',
 } as const;
 
 /** Management-token read-through cache TTL (DB hash remains authoritative). */
 export const MGMT_CACHE_TTL_SECONDS = 900;
+
+/** Trending: 48 h view window, bounded top-N list cached in a Redis zset. */
+export const TRENDING_WINDOW_DAYS = 2;
+export const TRENDING_TOP_N = 100;
 
 /** Anonymous management token: expires with the paste when it has a TTL. */
 export function utcDateKey(now: Date = new Date()): string {

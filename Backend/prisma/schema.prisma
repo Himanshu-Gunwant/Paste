@@ -179,6 +179,9 @@ model Paste {
   deletedAt        DateTime?  @map("deleted_at") @db.Timestamptz(6)
   deletedBy        DeletedBy? @map("deleted_by")
   forkOfId         String?    @map("fork_of_id") @db.VarChar(64)
+  // Generated tsvector (migration 20261105090000) — not exposed via the
+  // client; queried through parameterized raw SQL in search.service.
+  searchVector     Unsupported("tsvector")? @map("search_vector")
   latestRevisionNo Int        @default(1) @map("latest_revision_no")
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)

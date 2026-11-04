@@ -4,6 +4,7 @@ import { env } from '../config/env.js';
 import { authContext } from '../middleware/auth-context.js';
 import { originGuard } from '../middleware/origin-guard.js';
 import { rateLimit } from '../middleware/rate-limit.js';
+import { discoveryRouter } from './discovery.routes.js';
 import { authRouter } from './auth.routes.js';
 import { pastesRouter } from './paste.routes.js';
 import { userRouter } from './user.routes.js';
@@ -24,6 +25,7 @@ apiRouter.use(authContext());
 
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/users', userRouter);
+apiRouter.use(discoveryRouter); // GET /pastes, /search, /languages
 apiRouter.use('/pastes', pastesRouter);
 
 // Phase 3+: revisionsRouter (under /pastes/:id/revisions), collectionsRouter,

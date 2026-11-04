@@ -1,5 +1,7 @@
 import type { RequestHandler } from 'express';
 import * as userService from '../services/user.service.js';
+import * as discoveryService from '../services/discovery.service.js';
+import type { FeedQuery } from '../validators/discovery.validators.js';
 import * as sessionService from '../services/session.service.js';
 import type { DeleteMeBody, UpdateMeBody } from '../validators/user.validators.js';
 
@@ -69,4 +71,18 @@ export const getPublicProfile: RequestHandler = async (req, res) => {
   const params = req.validated.params as { username: string };
   const profile = await userService.getPublicProfile(params.username);
   res.status(200).json({ profile });
+};
+
+/** Public pastes of a user — same database-level leak protection as the feed. */
+export const getUserPublicPastes: RequestHandler = async (req, res) => {
+  const params = req.validated.params as { username: string };
+  const query = (req.validated.query ?? {}) as FeedQuery;
+  const result = await discoveryService.listPublicPastes({
+    sort: query.sort === 'trending' ? 'latest' : (query.sort ?? 'latest'),
+    language: query.language,
+    username: params.username,
+    cursor: query.cursor,
+    limit: query.limit,
+  });
+  res.status(200).json(result);
 };

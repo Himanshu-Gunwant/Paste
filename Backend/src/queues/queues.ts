@@ -60,6 +60,7 @@ export async function registerRepeatableJobs(): Promise<void> {
     { name: 'sweep-auth-tokens', repeat: { pattern: '25 * * * *' } },
     { name: 'reconcile-storage', repeat: { pattern: '0 4 * * *' } }, // nightly
     { name: 'flush-uniques', repeat: { pattern: '40 * * * *' } }, // hourly HLL
+    { name: 'recompute-trending', repeat: { pattern: '*/5 * * * *' } }, // §4 G
   ];
   for (const schedule of schedules) {
     await maintenance.add(schedule.name, {}, { repeat: schedule.repeat });
