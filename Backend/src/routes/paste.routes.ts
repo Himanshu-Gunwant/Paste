@@ -13,6 +13,8 @@ import {
   forkSchema,
   idOrSlugParamsSchema,
   revisionParamsSchema,
+  shareTokenParamsSchema,
+  shareTokenSchema,
   unlockSchema,
   updatePasteSchema,
 } from '../validators/paste.validators.js';
@@ -83,6 +85,22 @@ pastesRouter.patch(
 pastesRouter.delete('/:id', writeLimiter, validateParams(idOrSlugParamsSchema), pasteController.remove);
 
 pastesRouter.get('/:id/stats', readLimiter, validateParams(idOrSlugParamsSchema), analyticsController.pasteStats);
+
+pastesRouter.post(
+  '/:id/share-tokens',
+  writeLimiter,
+  requireAuth(),
+  validateParams(idOrSlugParamsSchema),
+  validateBody(shareTokenSchema),
+  pasteController.createShareToken,
+);
+pastesRouter.delete(
+  '/:id/share-tokens/:tokenId',
+  writeLimiter,
+  requireAuth(),
+  validateParams(shareTokenParamsSchema),
+  pasteController.revokeShareToken,
+);
 
 // Bookmarks (Phase 6) — session required, viewability-gated, idempotent.
 const bookmarkLimiter = rateLimit({ bucket: 'bookmark', limit: 120, windowSeconds: 60 });

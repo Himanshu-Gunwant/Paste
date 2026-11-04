@@ -141,3 +141,25 @@ export interface DiffQuery {
 export const diffQuerySchema = z.object({
   to: z.coerce.number().int().min(1).max(10000),
 });
+
+export interface ShareTokenBody {
+  expiresAt?: string;
+  maxUses?: number;
+}
+
+export const shareTokenSchema = z
+  .object({
+    expiresAt: z.iso.datetime().optional(),
+    maxUses: z.number().int().min(1).max(10000).optional(),
+  })
+  .optional();
+
+export interface ShareTokenParams {
+  id: string;
+  tokenId: string;
+}
+
+export const shareTokenParamsSchema = z.object({
+  id: z.string().min(3).max(64),
+  tokenId: z.uuid(),
+});

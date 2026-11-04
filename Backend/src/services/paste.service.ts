@@ -488,3 +488,44 @@ export async function hardDeleteAuthorPastes(authorId: string): Promise<void> {
 }
 
 export { livePasteWhere };
+
+export interface ShareTokenCreateBody {
+  expiresAt?: string;
+  maxUses?: number;
+}
+
+/** Owner-only share-token creation for private pastes (§4 B) — shown once. */
+export async function createShareToken(
+  idOrSlug: string,
+  auth: AuthContext,
+  body: ShareTokenCreateBody = {},
+): Promise<{ id: string; shareToken: string; expiresAt: Date | null }> {
+  const paste = await requireManageable(idOrSlug, auth);
+  if (auth.kind === 'anonymous') throw AppError.unauthorized();
+
+  const expiresAt = body.expiresAt ? new Date(body.expiresAt) : null;
+  if (expiresAt && (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now())) {
+    throw AppError.validation('expiresAt must be a future timestamp');
+  }
+  const raw = generateToken();
+  const created = await pasteTokenRepository.create({
+    pasteId: paste.id,
+    tokenHash: hashToken(raw),
+    purpose: 'SHARE',
+    createdBy: auth.user.id,
+    expiresAt,
+    maxUses: body.maxUses ?? null,
+  });
+  return { id: created.id, shareToken: raw, expiresAt };
+}
+
+export async function revokeShareToken(
+  idOrSlug: string,
+  tokenId: string,
+  auth: AuthContext,
+): Promise<void> {
+  if (auth.kind === 'anonymous') throw AppError.unauthorized();
+  const paste = await requireManageable(idOrSlug, auth);
+  const revoked = await pasteTokenRepository.revokeForOwner(paste.id, tokenId, auth.user.id);
+  if (revoked === 0) throw AppError.notFound('Share token not found');
+}

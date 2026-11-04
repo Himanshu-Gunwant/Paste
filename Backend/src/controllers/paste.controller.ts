@@ -2,7 +2,7 @@ import type { Request, RequestHandler, Response } from 'express';
 import * as pasteService from '../services/paste.service.js';
 import type { PasteWithAuthor } from '../services/paste.service.js';
 import type { AuthContext } from '../types/auth.js';
-import type { CreatePasteBody, ForkBody, UnlockBody, UpdatePasteBody } from '../validators/paste.validators.js';
+import type { CreatePasteBody, ForkBody, ShareTokenBody, ShareTokenParams, UnlockBody, UpdatePasteBody } from '../validators/paste.validators.js';
 
 const MANAGEMENT_TOKEN_HEADER = 'x-management-token';
 
@@ -148,4 +148,16 @@ export const fork: RequestHandler = async (req, res) => {
     paste: toPasteView(result.paste, { includeContent: false, includeStats: false }),
     ...(result.managementToken ? { managementToken: result.managementToken } : {}),
   });
+};
+
+export const createShareToken: RequestHandler = async (req, res) => {
+  const body = (req.validated.body ?? undefined) as ShareTokenBody | undefined;
+  const result = await pasteService.createShareToken(req.params['id'] as string, req.auth, body ?? {});
+  res.status(201).json(result);
+};
+
+export const revokeShareToken: RequestHandler = async (req, res) => {
+  const params = req.validated.params as ShareTokenParams;
+  await pasteService.revokeShareToken(params.id, params.tokenId, req.auth);
+  res.status(204).send();
 };
