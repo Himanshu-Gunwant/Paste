@@ -156,7 +156,7 @@ enum TokenPurpose {
 // index (WHERE custom_slug IS NOT NULL) created by the raw-SQL migration with
 // the other partial indexes (stable predicates only — never now(), §5.3).
 model Paste {
-  id               String     @id @db.VarChar(12) // public short id or custom slug
+  id               String     @id @db.VarChar(64) // 10-char short id OR custom slug (≤64)
   authorId         String?    @map("author_id") @db.Uuid // NULL = anonymous paste
   customSlug       String?    @map("custom_slug") @db.VarChar(64)
   title            String?    @db.VarChar(140)
@@ -178,7 +178,7 @@ model Paste {
   expiresAt        DateTime?  @map("expires_at") @db.Timestamptz(6)
   deletedAt        DateTime?  @map("deleted_at") @db.Timestamptz(6)
   deletedBy        DeletedBy? @map("deleted_by")
-  forkOfId         String?    @map("fork_of_id") @db.VarChar(12)
+  forkOfId         String?    @map("fork_of_id") @db.VarChar(64)
   latestRevisionNo Int        @default(1) @map("latest_revision_no")
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)

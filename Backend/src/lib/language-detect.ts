@@ -5,7 +5,7 @@
  * alongside the user-declared `language`.
  */
 const SHEBANG_MAP: [RegExp, string][] = [
-  [/^\s*#!\s*\/?(usr\/bin\/(?:env\s+)?)(ba)?sh\b/, 'bash'],
+  [/^\s*#!\s*\/?(?:usr\/)?(?:bin\/)?(?:env\s+)?(?:ba|z|k|da)?sh\b/, 'bash'],
   [/^\s*#!.*python3?\b/, 'python'],
   [/^\s*#!.*node\b/, 'javascript'],
   [/^\s*#!.*ruby\b/, 'ruby'],

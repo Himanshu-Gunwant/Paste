@@ -250,7 +250,7 @@ authorizePasteView(paste, ctx) → ALLOW | PASSWORD_REQUIRED | NOT_FOUND
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
-| id | VARCHAR(12) | NO | — | PK; 10-char unambiguous ID (or custom slug) |
+| id | VARCHAR(64) | NO | — | PK; 10-char unambiguous ID **or** custom slug (≤64 chars) — column widened in D-003 |
 | author_id | UUID | YES | — | FK users CASCADE; NULL = anonymous |
 | custom_slug | VARCHAR(64) | YES | — | UNIQUE **partial** (WHERE NOT NULL); global namespace |
 | title | VARCHAR(140) | YES | — | |

@@ -31,6 +31,20 @@ Supplements `Backend/docs/ARCHITECTURE.md` (the approved blueprint). Format: lig
 
 ---
 
+---
+
+## D-003: Paste id column widened to VARCHAR(64)
+
+**Date:** 2026-11-05 · **Status:** Accepted
+
+**Context.** The Rev 2 blueprint sized the paste id column as VARCHAR(12) (10-char short ids), but custom slugs (up to 64 chars) ARE the id in the single-namespace design — a P2000 length mismatch surfaced as a 500 in integration testing.
+
+**Decision.** `pastes.id`, `pastes.fork_of_id` and all `paste_id` FK columns are VARCHAR(64); short generated ids remain 10 chars from the 56-char alphabet. The migration shipped manually (`20261104223000_paste_id_varchar64`) because Prisma 7 interactive `migrate dev` cannot confirm in non-TTY shells — authored SQL, applied via `migrate deploy`, children before parent.
+
+**Consequences.** Single global namespace intact; partial unique index on `custom_slug` unchanged; architecture doc corrected.
+
+---
+
 ## D-001: Approved architecture (Revision 2)
 
 **Date:** 2026-11-04 · **Status:** Accepted

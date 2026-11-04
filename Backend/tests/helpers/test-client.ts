@@ -95,11 +95,14 @@ export function uniqueSuffix(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-/** Deletes all rate-limit keys so tests start with a clean budget. */
+/** Deletes rate-limit, quota and view-buffer keys so tests start clean. */
 export async function resetRateLimits(): Promise<void> {
   const redis = getRedis();
-  const keys = await redis.keys('rl:*');
-  if (keys.length > 0) await redis.del(...keys);
+  const patterns = ['rl:*', 'quota:anon:*', 'views:delta:*', 'views:inflight:*'];
+  for (const pattern of patterns) {
+    const keys = await redis.keys(pattern);
+    if (keys.length > 0) await redis.del(...keys);
+  }
 }
 
 // ---- MailHog helpers ------------------------------------------------------
