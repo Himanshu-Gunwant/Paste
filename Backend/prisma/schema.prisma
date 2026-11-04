@@ -86,6 +86,8 @@ model User {
   pastes        Paste[]
   pasteTokensCreated PasteToken[] @relation("PasteTokenCreator")
   apiKeys       ApiKey[]
+  collections   Collection[]
+  bookmarks     Bookmark[]
 
   @@map("users")
 }
@@ -193,6 +195,8 @@ model Paste {
   revisions   PasteRevision[]
   viewDaily   PasteViewDaily[]
   pasteTokens PasteToken[]
+  collectionItems CollectionPaste[]
+  bookmarks   Bookmark[]
 
   @@index([authorId, createdAt(sort: Desc)])
   @@index([visibility, language, createdAt(sort: Desc)])
@@ -292,4 +296,51 @@ model ApiUsage {
   @@index([userId, createdAt])
   @@index([createdAt])
   @@map("api_usage")
+}
+
+// ---- Phase 6: Collections & bookmarks ---------------------------------------
+
+model Collection {
+  id          String     @id @default(uuid(7)) @db.Uuid
+  ownerId     String     @map("owner_id") @db.Uuid
+  slug        String     @db.VarChar(64) // unique per owner
+  title       String     @db.VarChar(140)
+  description String?    @db.VarChar(500)
+  visibility  Visibility @default(PRIVATE)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner  User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  pastes CollectionPaste[]
+
+  @@unique([ownerId, slug])
+  @@index([visibility, createdAt(sort: Desc)])
+  @@map("collections")
+}
+
+model CollectionPaste {
+  collectionId String   @map("collection_id") @db.Uuid
+  pasteId      String   @map("paste_id") @db.VarChar(64)
+  position     Int
+  addedAt      DateTime @default(now()) @map("added_at") @db.Timestamptz(6)
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  paste      Paste      @relation(fields: [pasteId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, pasteId])
+  @@index([pasteId])
+  @@map("collection_pastes")
+}
+
+model Bookmark {
+  userId    String   @map("user_id") @db.Uuid
+  pasteId   String   @map("paste_id") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paste Paste @relation(fields: [pasteId], references: [id], onDelete: Cascade)
+
+  @@id([userId, pasteId])
+  @@index([pasteId])
+  @@map("bookmarks")
 }
