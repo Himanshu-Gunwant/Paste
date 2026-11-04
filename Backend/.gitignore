@@ -27,3 +27,6 @@ prisma/*.db
 # Editor
 .idea/
 .vscode/
+
+# ZCode session artifacts
+.zcode/
