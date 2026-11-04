@@ -1,12 +1,15 @@
 import { Router } from 'express';
 import { RATE_LIMITS } from '../config/constants.js';
 import { rateLimit } from '../middleware/rate-limit.js';
-import { validateBody, validateParams } from '../middleware/validate.js';
+import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
 import * as pasteController from '../controllers/paste.controller.js';
+import * as revisionsController from '../controllers/revisions.controller.js';
 import {
   createPasteSchema,
+  diffQuerySchema,
   forkSchema,
   idOrSlugParamsSchema,
+  revisionParamsSchema,
   unlockSchema,
   updatePasteSchema,
 } from '../validators/paste.validators.js';
@@ -75,3 +78,21 @@ pastesRouter.patch(
 );
 
 pastesRouter.delete('/:id', writeLimiter, validateParams(idOrSlugParamsSchema), pasteController.remove);
+
+// Revisions (Phase 3) — readable by anyone who can read the paste; restore
+// requires the manage decision (owner/management token/admin).
+pastesRouter.get('/:id/revisions', readLimiter, validateParams(idOrSlugParamsSchema), revisionsController.list);
+pastesRouter.get('/:id/revisions/:no', readLimiter, validateParams(revisionParamsSchema), revisionsController.getOne);
+pastesRouter.get(
+  '/:id/revisions/:no/diff',
+  readLimiter,
+  validateParams(revisionParamsSchema),
+  validateQuery(diffQuerySchema),
+  revisionsController.diff,
+);
+pastesRouter.post(
+  '/:id/revisions/:no/restore',
+  writeLimiter,
+  validateParams(revisionParamsSchema),
+  revisionsController.restore,
+);

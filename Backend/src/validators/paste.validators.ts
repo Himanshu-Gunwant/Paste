@@ -123,3 +123,21 @@ export interface IdOrSlugParams {
 export const idOrSlugParamsSchema = z.object({
   id: z.string().min(3).max(64),
 });
+
+export interface RevisionParams {
+  id: string;
+  no: number;
+}
+
+export const revisionParamsSchema = z.object({
+  id: z.string().min(3).max(64),
+  no: z.coerce.number().int().min(1).max(10000),
+});
+
+export interface DiffQuery {
+  to: number;
+}
+
+export const diffQuerySchema = z.object({
+  to: z.coerce.number().int().min(1).max(10000),
+});

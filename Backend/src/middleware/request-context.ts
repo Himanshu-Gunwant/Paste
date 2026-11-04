@@ -31,7 +31,11 @@ export function requestLogging() {
       ignore: (req) => req.url === '/healthz',
     },
     redact: {
-      paths: ['req.headers.authorization', 'req.headers.cookie'],
+      paths: [
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'req.headers.x-paste-password', // revision reads for locked pastes (§4 E)
+      ],
       censor: '[REDACTED]',
     },
   });

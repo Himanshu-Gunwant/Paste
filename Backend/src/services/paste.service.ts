@@ -233,8 +233,32 @@ export async function getPasteForView(
   return { paste, consumed: false, viaManagementToken: ctx.managementTokenVerified === true };
 }
 
+/**
+ * Authorization-only read path (Phase 3 revisions): full policy + password
+ * gate WITHOUT burn consumption or view counting.
+ */
+export async function authorizePasteRead(
+  idOrSlug: string,
+  auth: AuthContext,
+  options: GetPasteOptions = {},
+): Promise<{ paste: PasteWithAuthor; ctx: PasteViewContext }> {
+  const paste = await pasteRepository.findByIdOrSlug(idOrSlug);
+  if (!paste) throw AppError.notFound();
+  const ctx = await buildViewContext(paste.id, auth, options);
+  const decision = authorizePasteView(paste, ctx);
+  if (decision.outcome === 'NOT_FOUND') throw AppError.notFound();
+  if (decision.outcome === 'PASSWORD_REQUIRED') {
+    if (!options.password) {
+      throw new AppError('PASSWORD_REQUIRED', 401, 'This paste is password-protected');
+    }
+    const ok = await verifyPastePassword(paste.passwordHash, options.password);
+    if (!ok) throw new AppError('INVALID_PASSWORD', 401, 'Incorrect password');
+  }
+  return { paste, ctx };
+}
+
 /** Verifies SHARE/MANAGEMENT bearer tokens against PostgreSQL hashes. */
-async function buildViewContext(
+export async function buildViewContext(
   pasteId: string,
   auth: AuthContext,
   options: GetPasteOptions,
@@ -257,7 +281,7 @@ async function buildViewContext(
   return ctx;
 }
 
-async function requireManageable(idOrSlug: string, auth: AuthContext, managementToken?: string): Promise<PasteWithAuthor> {
+export async function requireManageable(idOrSlug: string, auth: AuthContext, managementToken?: string): Promise<PasteWithAuthor> {
   const paste = await pasteRepository.findByIdOrSlug(idOrSlug);
   if (!paste) throw AppError.notFound();
   const ctx: PasteViewContext = { auth };
