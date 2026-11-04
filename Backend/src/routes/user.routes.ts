@@ -3,6 +3,7 @@ import { requireAuth } from '../middleware/require-auth.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
 import * as userController from '../controllers/user.controller.js';
 import * as apiKeyController from '../controllers/api-key.controller.js';
+import * as analyticsController from '../controllers/analytics.controller.js';
 import {
   deleteMeSchema,
   sessionIdParamsSchema,
@@ -25,6 +26,7 @@ userRouter.patch('/me', requireAuth(), validateBody(updateMeSchema), userControl
 userRouter.delete('/me', requireAuth(), validateBody(deleteMeSchema), userController.deleteMe);
 userRouter.get('/me/api-usage', requireAuth(), apiKeyController.myUsage);
 userRouter.get('/me/bookmarks', requireAuth(), collectionController.listBookmarks);
+userRouter.get('/me/analytics', requireAuth(), analyticsController.myAnalytics);
 userRouter.get('/me/sessions', requireAuth(), userController.listSessions);
 userRouter.delete('/me/sessions', requireAuth(), userController.revokeAllSessions);
 userRouter.delete('/me/sessions/:id', requireAuth(), validateParams(sessionIdParamsSchema), userController.revokeSession);

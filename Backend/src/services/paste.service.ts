@@ -69,6 +69,19 @@ async function resolvePasteId(customSlug: string | undefined): Promise<string> {
   throw AppError.conflict('Could not allocate a paste id, please retry');
 }
 
+/** Best-effort denormalized storage counter (nightly reconcile is authoritative, §4 K). */
+async function adjustStorage(authorId: string | null, delta: number): Promise<void> {
+  if (!authorId || delta === 0) return;
+  try {
+    await prisma.user.update({
+      where: { id: authorId },
+      data: { storageUsed: { increment: BigInt(delta) } },
+    });
+  } catch {
+    // user gone / race — nightly reconcile corrects
+  }
+}
+
 export interface CreatePasteOptions {
   ip: string | null;
 }
@@ -140,6 +153,8 @@ export async function createPaste(
     }
     return paste;
   });
+
+  await adjustStorage(authorId, created.contentSize);
 
   // Optional read-through cache (DB hash remains authoritative — §4 B).
   if (managementToken) {
@@ -358,6 +373,13 @@ export async function updatePaste(
     );
   });
 
+  if (contentChanged) {
+    await adjustStorage(
+      paste.authorId,
+      Buffer.byteLength(body.content!, 'utf8') - paste.contentSize,
+    );
+  }
+
   // Re-schedule the expire job (deterministic jobId replaces the old one).
   if (newExpiry !== undefined) {
     void cancelPasteExpiration(paste.id).catch(() => undefined);
@@ -379,6 +401,7 @@ export async function deletePaste(
 
   const count = await pasteRepository.softDelete(paste.id, deletedBy);
   if (count > 0) {
+    await adjustStorage(paste.authorId, -paste.contentSize);
     // The management credential dies with the paste (§4 B).
     await pasteTokenRepository.deleteAllForPaste(paste.id);
     void getRedis().del(REDIS_KEYS.mgmtCache(paste.id)).catch(() => undefined);

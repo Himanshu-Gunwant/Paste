@@ -6,6 +6,7 @@ import { validateBody, validateParams, validateQuery } from '../middleware/valid
 import * as pasteController from '../controllers/paste.controller.js';
 import * as revisionsController from '../controllers/revisions.controller.js';
 import * as collectionController from '../controllers/collection.controller.js';
+import * as analyticsController from '../controllers/analytics.controller.js';
 import {
   createPasteSchema,
   diffQuerySchema,
@@ -80,6 +81,8 @@ pastesRouter.patch(
 );
 
 pastesRouter.delete('/:id', writeLimiter, validateParams(idOrSlugParamsSchema), pasteController.remove);
+
+pastesRouter.get('/:id/stats', readLimiter, validateParams(idOrSlugParamsSchema), analyticsController.pasteStats);
 
 // Bookmarks (Phase 6) — session required, viewability-gated, idempotent.
 const bookmarkLimiter = rateLimit({ bucket: 'bookmark', limit: 120, windowSeconds: 60 });

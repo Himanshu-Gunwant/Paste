@@ -6,6 +6,7 @@ import { REQUEST_BODY_LIMIT } from './config/constants.js';
 import { requestLogging } from './middleware/request-context.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { mountOpenApi } from './plugins/openapi.js';
+import { embed } from './controllers/embed.controller.js';
 import { healthRouter } from './routes/health.js';
 import { apiRouter } from './routes/index.js';
 
@@ -51,7 +52,8 @@ export function createApp(): express.Express {
   // Versioned API — populated by phase (see src/routes/index.ts).
   app.use('/api/v1', apiRouter);
 
-  // Future: GET /embed/:id server-rendered embed route (Phase 7).
+  // Server-rendered embeds (§4 I) — replaces helmet framing headers per response.
+  app.get('/embed/:id', embed);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
