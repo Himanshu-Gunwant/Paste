@@ -5,6 +5,19 @@ All notable changes to the **Paste backend**. Format based on [Keep a Changelog]
 ## [Unreleased]
 
 ### Added
+- **Phase 3 — Revisions**: metadata-only history, single snapshots, computed unified diffs (jsdiff), append-only restore with metadata restore and no-op-when-identical; locked pastes expose revisions via the redacted X-Paste-Password header.
+- **Phase 4 — Discovery**: title/description FTS (generated tsvector + partial GIN, modeled via Unsupported so future migrations never drop it), latest/popular feeds with database-level leak protection, trending (48h aggregates -> bounded zset, 5-min recompute), language facets, keyset cursor pagination, public profile pastes.
+- **Phase 5 — Developer API**: hashed pb_ API keys (show-once, revoke-only, verified-email gate), bearer auth, daily per-key quotas, buffered usage capture + summaries, Idempotency-Key replay store on paste creation (409/422 semantics), OpenAPI 3.1 + Swagger UI.
+- **Phase 6 — Collections & bookmarks**: owner-scoped slugs, ordered membership with transactional compaction, restricted-item rendering WITHOUT paste ids (leak rule), viewability-gated bookmarking.
+- **Phase 7 — Analytics & embeds**: paste/user stats + 30-day series, denormalized storage counter with nightly reconcile, server-rendered embeds (highlight.js escaping, strict CSP, frame-ancestors *), share-token endpoints.
+- **Phase 8 — Abuse & admin**: reports with auto-unlist heuristic + duplicate-cluster signals, suspension lifecycle (tx session/key revocation), moderator deletes, hard purge, IP-ban enforcement on anonymous writes, append-only audit trail, Turnstile CAPTCHA point (fail-closed).
+- **Phase 9 — Hardening**: security consolidation suite (cookie/header hygiene, SQLi inertness, traversal, 413, unicode byte accounting, enumeration uniformity, secret-leak scans), k6 smoke profile, backup/restore tooling — drill PASSED (18 tables restored).
+- Sequential integration-file execution (shared Redis state safety); non-TTY migration authoring helper (scripts/make-migration.cjs).
+
+### Fixed
+- pastes.id widened to VARCHAR(64) — custom slugs are the id (P2000 caught by tests; D-003).
+- List envelopes aligned to the spec: { data, pagination: { cursor, hasMore } }.
+- OAuth redirect_uri built with the /callback suffix; PKCE verified against mock providers.
 - **Phase 2 — Paste core** (gate suites green: burn concurrency, flush crash recovery, expiry race):
   - Paste CRUD with the full visibility policy (public/unlisted/private), password protection + unlock, central access-policy service.
   - Expiration: query-side live filter (volatile now() only in queries), idempotent BullMQ expire/purge jobs (6-day delay cap), 5-minute AUTHORITATIVE sweeper, tombstone retention purges (7/30 days).
