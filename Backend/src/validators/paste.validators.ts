@@ -105,6 +105,17 @@ export const unlockSchema = z.object({
   password: z.string().min(1).max(PASTE_PASSWORD_MAX),
 });
 
+export interface ForkBody {
+  password?: string;
+}
+
+/** Fork of a password-protected source requires knowing the password. */
+export const forkSchema = z
+  .object({
+    password: z.string().max(PASTE_PASSWORD_MAX).optional(),
+  })
+  .optional();
+
 export interface IdOrSlugParams {
   id: string;
 }

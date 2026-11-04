@@ -44,6 +44,7 @@ export const RATE_LIMITS = {
   PASTE_CREATE_ANON: { limit: 10, windowSeconds: 3600 },
   PASTE_CREATE_USER: { limit: 60, windowSeconds: 3600 },
   PASTE_READ: { limit: 300, windowSeconds: 60 },
+  PASTE_WRITE: { limit: 120, windowSeconds: 60 },
   RAW_DOWNLOAD: { limit: 120, windowSeconds: 60 },
   UNLOCK: { limit: 10, windowSeconds: 15 * 60 },
   FORK: { limit: 20, windowSeconds: 3600 },

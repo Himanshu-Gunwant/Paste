@@ -8,8 +8,6 @@ import {
   TOMBSTONE_RETENTION_DAYS,
   MGMT_CACHE_TTL_SECONDS,
 } from '../config/constants.js';
-import type { ExpiresInPreset } from '../config/constants.js';
-import { env } from '../config/env.js';
 import { AppError } from '../lib/errors.js';
 import { generatePasteId, generateToken, hashToken } from '../lib/tokens.js';
 import { detectLanguage } from '../lib/language-detect.js';
@@ -32,7 +30,7 @@ import type { CreatePasteBody, UpdatePasteBody } from '../validators/paste.valid
  * canonical live predicate (deleted_at IS NULL AND expiry > now()).
  */
 
-type PasteWithAuthor = NonNullable<Awaited<ReturnType<typeof pasteRepository.findByIdOrSlug>>>;
+export type PasteWithAuthor = NonNullable<Awaited<ReturnType<typeof pasteRepository.findByIdOrSlug>>>;
 
 function resolveExpiry(body: { expiresIn?: keyof typeof EXPIRES_IN_PRESETS_SECONDS; expiresAt?: string | null }): Date | null | undefined {
   if (body.expiresIn) {

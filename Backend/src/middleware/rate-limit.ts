@@ -39,10 +39,16 @@ export interface RateLimitOptions {
   windowSeconds: number;
   /** Override the identity (defaults to req.ip). */
   identity?: (req: Request) => string;
+  /** Skip counting entirely (e.g. identity-scoped anon/user pairs). */
+  skip?: (req: Request) => boolean;
 }
 
 export function rateLimit(options: RateLimitOptions): RequestHandler {
   return async (req, res, next) => {
+    if (options.skip?.(req)) {
+      next();
+      return;
+    }
     let identity: string;
     try {
       identity = options.identity ? options.identity(req) : (req.ip ?? 'unknown');

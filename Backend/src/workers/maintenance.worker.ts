@@ -70,19 +70,8 @@ export async function reconcileStorageUsed(): Promise<number> {
   return corrected;
 }
 
-const SWEEP_NAMES = [
-  'sweep-expiry',
-  'sweep-purge',
-  'sweep-sessions',
-  'sweep-auth-tokens',
-  'reconcile-storage',
-  'flush-uniques',
-] as const;
-
-export type MaintenanceSweep = (typeof SWEEP_NAMES)[number];
-
 export async function processMaintenanceJob(job: Job): Promise<void> {
-  switch (job.name as MaintenanceSweep) {
+  switch (job.name) {
     case 'sweep-expiry':
       await sweepExpiredPastes();
       break;

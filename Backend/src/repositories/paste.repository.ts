@@ -1,4 +1,4 @@
-import { Prisma } from '../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
 import type { DeletedBy, Paste } from '../generated/prisma/client.js';
 import { TOMBSTONE_RETENTION_DAYS } from '../config/constants.js';
 import { prisma } from '../lib/prisma.js';
