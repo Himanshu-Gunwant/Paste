@@ -138,6 +138,27 @@ export const pasteRepository = {
   },
 
   /** Sets the tombstone (content nulled in the same write) — idempotent. */
+  update(
+    id: string,
+    patch: {
+      content?: string | null;
+      contentSize?: number;
+      contentHash?: string;
+      latestRevisionNo?: number;
+      title?: string | null;
+      description?: string | null;
+      language?: string | null;
+      visibility?: 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
+      passwordHash?: string | null;
+      maxViews?: number | null;
+      burnAfterRead?: boolean;
+      expiresAt?: Date | null;
+    },
+    db: Db = prisma,
+  ): Promise<Paste> {
+    return db.paste.update({ where: { id }, data: patch });
+  },
+
   softDelete(pasteId: string, deletedBy: DeletedBy, db: Db = prisma): Promise<number> {
     return db.paste
       .updateMany({

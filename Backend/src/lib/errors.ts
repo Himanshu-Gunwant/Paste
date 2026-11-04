@@ -92,6 +92,10 @@ export class AppError extends Error {
   static oauthEmailUnverified(): AppError {
     return new AppError('OAUTH_EMAIL_UNVERIFIED', 400, 'Provider email is not verified; account creation and linking are refused');
   }
+
+  static quotaExceeded(message = 'Quota exceeded'): AppError {
+    return new AppError('QUOTA_EXCEEDED', 429, message);
+  }
 }
 
 /** Flatten a Zod issue list into the stable wire format. */
